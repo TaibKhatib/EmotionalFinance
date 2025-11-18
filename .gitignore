@@ -1,0 +1,9 @@
+.venv
+.env
+
+data/*
+!data/.gitkeep
+
+# IDE
+.vscode/
+.DS_Store
