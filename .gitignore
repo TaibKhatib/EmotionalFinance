@@ -1,9 +1,9 @@
 .venv
 .env
-
+logs/*
 data/*
 !data/.gitkeep
-
+config
 # IDE
 .vscode/
 .DS_Store

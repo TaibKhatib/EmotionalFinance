@@ -1,0 +1,4 @@
+clusters:
+  - name: local-kafka
+    bootstrapServers: kafka:9092
+    schemaRegistry: ""
