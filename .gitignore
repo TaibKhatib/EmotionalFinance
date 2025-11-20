@@ -5,6 +5,8 @@ logs/*
 data/*
 !data/.gitkeep
 
+dags/__pycache__/
+
 config
 # IDE
 .vscode/
