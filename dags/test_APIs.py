@@ -1,7 +1,11 @@
 from airflow.decorators import dag, task
 from datetime import datetime
 
-@dag(start_date=datetime(2025,11,20), schedule_interval=None, catchup=False)
+@dag(
+    start_date=datetime(2023, 11, 21),
+    schedule="@daily",
+    catchup=False
+)
 def news_finance_pipeline():
     @task()
     def fetch_news(company, api_key, from_date):
@@ -22,10 +26,17 @@ def news_finance_pipeline():
             "actions": ticker.actions.to_dict()
         }
     
+    @task()
+    def log_results(news, financials):
+        print("Fetched News:", news)
+        print("Fetched Financials:", financials)
+
     news = fetch_news("apple", "YOUR_API_KEY", "2024-09-06")
     financials = fetch_financials("AAPL")
 
-    # add a publish_to_kafka task here if needed
-    
+    log_results(news, financials)
 
-pipeline_dag = news_finance_pipeline()
+    # add a publish_to_kafka task here if needed
+
+
+dag = news_finance_pipeline()
