@@ -5,7 +5,8 @@ logs/*
 data/*
 !data/.gitkeep
 
-dags/__pycache__/
+airflow/dags/__pycache__/
+airflow/logs/
 
 config
 # IDE

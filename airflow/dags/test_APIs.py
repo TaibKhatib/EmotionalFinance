@@ -1,5 +1,8 @@
+import os
 from airflow.decorators import dag, task
-from datetime import datetime
+from datetime import datetime, timedelta
+
+api_key = os.environ.get("YOUR_API_KEY")
 
 @dag(
     start_date=datetime(2023, 11, 21),
@@ -10,8 +13,9 @@ def news_finance_pipeline():
     @task()
     def fetch_news(company, api_key, from_date):
         import requests
+        recent_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
         url = "https://newsapi.org/v2/everything"
-        params = {"q": company, "from": from_date, "sortBy": "publishedAt", "apiKey": api_key}
+        params = {"q": company, "from": recent_date, "sortBy": "publishedAt", "apiKey": api_key}
         response = requests.get(url, params=params)
         response.raise_for_status()
         return response.json()
@@ -31,7 +35,7 @@ def news_finance_pipeline():
         print("Fetched News:", news)
         print("Fetched Financials:", financials)
 
-    news = fetch_news("apple", "YOUR_API_KEY", "2024-09-06")
+    news = fetch_news("apple", api_key, "2025-11-20")
     financials = fetch_financials("AAPL")
 
     log_results(news, financials)

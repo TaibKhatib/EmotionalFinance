@@ -1,3 +1,5 @@
 apache-airflow-providers-apache-kafka
 confluent-kafka
-requests            # For REST API calls
+requests
+kafka-python
+yfinance
