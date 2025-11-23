@@ -25,9 +25,9 @@ def news_finance_pipeline():
         import yfinance as yf
         ticker = yf.Ticker(ticker_symbol)
         return {
-            "history": ticker.history(period="1y").to_dict(),
-            "financials": ticker.financials.to_dict(),
-            "actions": ticker.actions.to_dict()
+            "history": json.loads(ticker.history(period="1y").to_json(orient= records)),
+            "financials": json.loads(ticker.financials.to_json(orient= records)),
+            "actions": json.loads(ticker.actions.to_json(orient= records))
         }
     
     @task()
