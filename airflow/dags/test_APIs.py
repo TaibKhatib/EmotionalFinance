@@ -1,7 +1,7 @@
 import os
 from airflow.decorators import dag, task
 from datetime import datetime, timedelta
-
+import json
 api_key = os.environ.get("YOUR_API_KEY")
 
 @dag(
@@ -25,9 +25,9 @@ def news_finance_pipeline():
         import yfinance as yf
         ticker = yf.Ticker(ticker_symbol)
         return {
-            "history": json.loads(ticker.history(period="1y").to_json(orient= records)),
-            "financials": json.loads(ticker.financials.to_json(orient= records)),
-            "actions": json.loads(ticker.actions.to_json(orient= records))
+            "history": json.loads(ticker.history(period="1y").to_json(orient= "records")),
+            "financials": json.loads(ticker.financials.to_json(orient= "records")),
+            "actions": json.loads(ticker.actions.to_json(orient= "records"))
         }
     
     @task()
@@ -40,7 +40,15 @@ def news_finance_pipeline():
 
     log_results(news, financials)
 
-    # add a publish_to_kafka task here if needed
+    @task()
+    def produce_message(data):
+        from kafka import KafkaProducer
+        producer = KafkaProducer(bootstrap_servers='kafka:9092',
+                                value_serializer=lambda v: v.encode('utf-8') if isinstance(v, str) else json.dumps(v).encode('utf-8'))
+        producer.send('financial_news', data)
+        producer.flush()
+    produce_message({"news": news, "financials": financials})
+
 
 
 dag = news_finance_pipeline()

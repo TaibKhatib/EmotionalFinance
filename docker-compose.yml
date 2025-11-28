@@ -50,7 +50,7 @@ x-airflow-common:
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.3}
-  build: .
+  build: ./airflow
   env_file:
     - ${ENV_FILE_PATH:-.env}
   environment:
@@ -77,10 +77,10 @@ x-airflow-common:
     AIRFLOW__CORE__PYTHONPATH: /opt/airflow/src
 
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/airflow/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/airflow/config:/opt/airflow/config
+    - ${AIRFLOW_PROJ_DIR:-.}/airflow/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -91,6 +91,36 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  services:
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"   # master UI
+      - "7077:7077"   # master port
+    networks:
+      - spark-network
+
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=2
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"   # worker UI
+    networks:
+      - spark-network
   postgres:
     image: postgres:16
     environment:
@@ -352,6 +382,31 @@ services:
       - airflow
     depends_on:
       <<: *airflow-common-depends-on
+  spark:
+      build:
+        context: ./spark
+      container_name: spark
+      ports:
+        - "4040:4040"
+        - "8888:8888"
+      environment:
+        SPARK_MODE: "local"
+      volumes:
+        - ./spark/work:/home/jovyan/work
+      depends_on:
+        - minio
+
+  minio:
+      image: minio/minio
+      container_name: minio
+      command: server /data --console-address ":9001"
+      environment:
+        MINIO_ROOT_USER: minio
+        MINIO_ROOT_PASSWORD: minio123
+      ports:
+        - "9000:9000"
+        - "9001:9001"
+      restart: always
 
   # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
   # or by explicitly targeted on the command line e.g. docker-compose up flower.
@@ -375,5 +430,8 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+networks:
+  spark-network: #for communication between spark master and spark worker
+    driver: bridge
 volumes:
-  postgres-db-volume:
+  postgres-db-volume: 
