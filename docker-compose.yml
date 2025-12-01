@@ -75,6 +75,12 @@ x-airflow-common:
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW__CORE__PYTHONPATH: /opt/airflow/src
+    # AIRFLOW__CONN__MINIO_S3: >
+    #   {"conn_type":"s3",
+    #   "aws_access_key_id":"minio",
+    #   "aws_secret_access_key":"minio123",
+    #   "host":"http://minio:9000"}
+
 
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/airflow/dags:/opt/airflow/dags
@@ -91,36 +97,35 @@ x-airflow-common:
       condition: service_healthy
 
 services:
-  services:
-  spark-master:
-    image: bitnami/spark:latest
-    container_name: spark-master
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-    ports:
-      - "8080:8080"   # master UI
-      - "7077:7077"   # master port
-    networks:
-      - spark-network
+  # spark-master:
+  #   image: bitnami/spark:latest
+  #   container_name: spark-master
+  #   environment:
+  #     - SPARK_MODE=master
+  #     - SPARK_RPC_AUTHENTICATION_ENABLED=no
+  #     - SPARK_RPC_ENCRYPTION_ENABLED=no
+  #     - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+  #     - SPARK_SSL_ENABLED=no
+  #   ports:
+  #     - "8080:8080"   # master UI
+  #     - "7077:7077"   # master port
+  #   networks:
+  #     - spark-network
 
-  spark-worker:
-    image: bitnami/spark:latest
-    container_name: spark-worker
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=2
-    depends_on:
-      - spark-master
-    ports:
-      - "8081:8081"   # worker UI
-    networks:
-      - spark-network
+  # spark-worker:
+  #   image: bitnami/spark:latest
+  #   container_name: spark-worker
+  #   environment:
+  #     - SPARK_MODE=worker
+  #     - SPARK_MASTER_URL=spark://spark-master:7077
+  #     - SPARK_WORKER_MEMORY=1G
+  #     - SPARK_WORKER_CORES=2
+  #   depends_on:
+  #     - spark-master
+  #   ports:
+  #     - "8081:8081"   # worker UI
+  #   networks:
+  #     - spark-network
   postgres:
     image: postgres:16
     environment:
@@ -382,31 +387,32 @@ services:
       - airflow
     depends_on:
       <<: *airflow-common-depends-on
-  spark:
-      build:
-        context: ./spark
-      container_name: spark
-      ports:
-        - "4040:4040"
-        - "8888:8888"
-      environment:
-        SPARK_MODE: "local"
-      volumes:
-        - ./spark/work:/home/jovyan/work
-      depends_on:
-        - minio
+
+  # spark:
+  #   build:
+  #     context: ./spark
+  #   container_name: spark
+  #   ports:
+  #     - "4040:4040"
+  #     - "8888:8888"
+  #   environment:
+  #     SPARK_MODE: "local"
+  #   volumes:
+  #     - ./spark/work:/home/jovyan/work
+  #   depends_on:
+  #     - minio
 
   minio:
-      image: minio/minio
-      container_name: minio
-      command: server /data --console-address ":9001"
-      environment:
-        MINIO_ROOT_USER: minio
-        MINIO_ROOT_PASSWORD: minio123
-      ports:
-        - "9000:9000"
-        - "9001:9001"
-      restart: always
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: always
 
   # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
   # or by explicitly targeted on the command line e.g. docker-compose up flower.
