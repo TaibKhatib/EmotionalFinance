@@ -2,10 +2,9 @@ import requests
 import json
 url = "https://api.gdeltproject.org/api/v2/doc/doc"
 params = {
-    "query": "apple sourcelang:english ",
+    "query": "(apple OR AAPL) ( decision OR innovate OR forecast) sourcelang:english",
     "mode": "artList",
-    "maxrecords": "10",
-    "timespan": "1week",
+    "timespan": "1w",
     "format": "json"
 }
 headers = {
@@ -14,4 +13,9 @@ headers = {
 
 result = requests.get(url, params=params, headers=headers)
 print("FULL URL:", result.url)
-print(json.dumps(result.json(), indent=4, ensure_ascii=False))
+
+
+articles = result.json()["articles"]
+URLs=[article["url"] for article in articles]
+print(URLs)
+print(len(articles))
