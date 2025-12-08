@@ -7,7 +7,7 @@ from datetime import datetime
     start_date=datetime(2025, 12, 1),
     schedule=None,  # Manual trigger
     catchup=False,
-    dag_id="minio_test_dag"
+    dag_id="test_minio"
 )
 def test_minio_dag():
 

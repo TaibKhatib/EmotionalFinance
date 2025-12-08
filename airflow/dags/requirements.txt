@@ -1,6 +1,10 @@
 apache-airflow-providers-apache-kafka
 apache-airflow-providers-amazon
+apache-airflow-providers-apache-spark
 confluent-kafka
 requests
 kafka-python
+boto3
+pandas
+pyarrow
 yfinance

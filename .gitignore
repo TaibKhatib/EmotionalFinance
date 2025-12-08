@@ -8,6 +8,11 @@ data/*
 airflow/dags/__pycache__/
 airflow/logs/
 
+__pycache__/
+spark/apps/.ipynb_checkpoints
+spark/logs/
+spark/apps/.Trash-0/
+
 config
 # IDE
 .vscode/
