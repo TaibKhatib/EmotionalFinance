@@ -8,3 +8,7 @@ boto3
 pandas
 pyarrow
 yfinance
+scrapy
+trafilatura
+scrapy
+apache-airflow
