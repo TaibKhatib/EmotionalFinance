@@ -7,10 +7,10 @@ from datetime import datetime
 import boto3
 import pandas as pd
 
-from scrapy.crawler import CrawlerProcess
+import trafilatura
 
 # IMPORTANT: update this to your real spider path:
-from airflow.dags.scrapy import ArticleSpider
+# from airflow.dags.scrapy import ArticleSpider
 
 from airflow.decorators import dag, task
 
@@ -60,6 +60,19 @@ def is_scrapable(url: str) -> bool:
         # and is_html(url)
     )
 
+def scrap_url(url: str) -> dict:
+    """
+    Scrapes the article content from the given URL using Trafilatura.
+    Returns a dictionary with the URL and extracted content.
+    """
+
+    downloaded = trafilatura.fetch_url(url)
+    if downloaded:
+        result = trafilatura.extract(downloaded, include_comments=False, include_tables=False)
+        return {"url": url, "content": result}
+    else:
+        return {"url": url, "content": None}
+
 
 # -------------------------
 # Airflow DAG
@@ -92,25 +105,19 @@ def gdelt_to_minio_raw_dag():
     @task
     def scrape_urls(urls: list[str]):
         """
-        Runs Scrapy to extract article content.
+        Runs the scrap_url function to extract article content.
         Saves articles.json locally, then uploads to MinIO.
         """
-        output_file = "articles.json"
-
-        process = CrawlerProcess(settings={
-            "USER_AGENT": "Mozilla/5.0",
-            "LOG_LEVEL": "ERROR",
-            "FEED_FORMAT": "json",
-            "FEED_URI": output_file,
-        })
-
-        process.crawl(ArticleSpider, urls=urls)
-        process.start()
-
-        # Upload to MinIO
-        upload_to_minio(output_file, f"gdelt/{output_file}")
-
-        return f"Uploaded to MinIO at gdelt/{output_file}"
+        scraped_data = []
+        for url in urls:
+            scraped_data.append(scrap_url(url))
+        
+        local_file = "/tmp/articles.json"
+        with open(local_file, "w") as f:
+            json.dump(scraped_data, f)
+        
+        object_name = f"articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        upload_to_minio(local_file, object_name)
 
     @task
     def fetch_gdelt_urls() -> list[str]:
