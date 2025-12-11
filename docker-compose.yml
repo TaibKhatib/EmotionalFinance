@@ -119,29 +119,51 @@ services:
     entrypoint: /bin/bash
     command: -c "/opt/spark/sbin/start-master.sh; /opt/spark-apps/jupyter_lab_start.sh; tail -f /dev/null"
 
+  # spark-worker:
+  #   build: ./spark
+  #   image: spark-worker
+  #   container_name: spark-worker
+  #   networks:
+  #     - spark-network
+  #   mem_limit: 1024m
+  #   ports:
+  #     - "9082:8081"
+  #     - "7002:7000"
+  #   depends_on:
+  #     - spark-master
+  #   environment:
+  #     - SPARK_MASTER=spark://spark-master:7077
+  #     - SPARK_WORKER_CORES=2
+  #     - SPARK_WORKER_MEMORY=1G
+  #     - SPARK_EXECUTOR_MEMORY=1G
+  #     - SPARK_WORKLOAD=worker
+  #     - SPARK_LOCAL_IP=spark-worker
+  #   volumes:
+  #      - ./spark/apps:/opt/spark-apps
+  #      - ./spark/logs:/tmp/spark-events
+  #   command: ["/opt/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
+
   spark-worker:
     build: ./spark
     image: spark-worker
     container_name: spark-worker
     networks:
       - spark-network
-    mem_limit: 1024m
-    ports:
-      - "9082:8081"
-      - "7002:7000"
     depends_on:
       - spark-master
     environment:
-      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_NO_DAEMONIZE=true          # keep worker in foreground
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=1G
       - SPARK_EXECUTOR_MEMORY=1G
       - SPARK_WORKLOAD=worker
       - SPARK_LOCAL_IP=spark-worker
     volumes:
-       - ./spark/apps:/opt/spark-apps
-       - ./spark/logs:/tmp/spark-events
-    command: ["/opt/spark/sbin/start-worker.sh", "spark://spark-master:7077"]
+      - ./spark/apps:/opt/spark-apps
+      - ./spark/logs:/tmp/spark-events
+    entrypoint: ["/opt/spark/bin/spark-class"]
+    command: ["org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+
 
   postgres:
     image: postgres:16
@@ -416,6 +438,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     restart: always
+    networks:
+      - spark-network
 
   # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
   # or by explicitly targeted on the command line e.g. docker-compose up flower.
