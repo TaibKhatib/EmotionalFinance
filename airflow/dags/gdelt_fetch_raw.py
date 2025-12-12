@@ -2,12 +2,11 @@ import json
 import requests
 import urllib.robotparser
 from urllib.parse import urlparse
-from datetime import datetime
-
+from datetime import datetime, timedelta
 import boto3
 import pandas as pd
 
-import trafilatura
+from trafilatura import extract, fetch_url, extract_metadata
 
 # IMPORTANT: update this to your real spider path:
 # from airflow.dags.scrapy import ArticleSpider
@@ -66,12 +65,14 @@ def scrap_url(url: str) -> dict:
     Returns a dictionary with the URL and extracted content.
     """
 
-    downloaded = trafilatura.fetch_url(url)
+    downloaded = fetch_url(url)
     if downloaded:
-        result = trafilatura.extract(downloaded, include_comments=False, include_tables=False)
-        return {"url": url, "content": result}
+        result = extract(downloaded, include_comments=False, include_tables=False)
+        meta = extract_metadata(downloaded, default_url=url)
+        pub_date = meta.date if meta is not None else None
+        return {"url": url, "content": result, "pub_date": pub_date}
     else:
-        return {"url": url, "content": None}
+        return {"url": url, "content": None, "pub_date": None}
 
 
 # -------------------------
@@ -89,7 +90,7 @@ def gdelt_to_minio_raw_dag():
     MINIO_ENDPOINT = "http://minio:9000"   
     MINIO_ACCESS_KEY = "minio"         
     MINIO_SECRET_KEY = "minio123"        
-    MINIO_BUCKET = "news-raw"
+    MINIO_BUCKET = "test"
 
     def upload_to_minio(local_path: str, object_name: str):
         """Uploads a local file to MinIO."""
@@ -126,19 +127,34 @@ def gdelt_to_minio_raw_dag():
         """
 
         api_url = "https://api.gdeltproject.org/api/v2/doc/doc"
+        #(approval OR trial OR EMA OR FDA OR merger OR acquisition OR regulation OR drug OR phase OR patent OR competitor)
         params = {
-            "query": "(apple OR AAPL) ( decision OR innovate OR forecast) sourcelang:english",
+            "query": '("Cosmo Pharmaceuticals" OR "Cosmo Pharma" OR "TRB Chemedica" OR "Norgine" OR "EndoChoice" OR "PhaseBio" OR "EndoChoice" OR "Alkermes" OR "Genmab") sourcelang:english',
             "mode": "artList",
-            "timespan": "1w",
+            "startdatetime": "20241215000000",
+            "enddatetime": "20250115000000",
             "format": "json"
         }
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
-        result = requests.get(api_url, params=params, headers=headers)
-        articles = result.json().get("articles", [])
-        urls = [article["url"] for article in articles]
-        return urls
+        try:
+            result = requests.get(api_url, params=params, headers=headers, timeout=10)
+            result.raise_for_status()
+            data = result.json()
+            articles = data.get("articles", [])
+            if not articles:
+                print("No articles returned from GDELT.")
+                return []
+            urls = [article["url"] for article in articles]
+            return urls
+        
+        except requests.RequestException as e:
+            print(f"GDELT request failed: {e}")
+            return []
+        except ValueError as e:
+            print(f"Error parsing JSON from GDELT: {e}")
+            return []
 
     @task
     def filter_scrapable(urls: list[str]) -> list[str]:
