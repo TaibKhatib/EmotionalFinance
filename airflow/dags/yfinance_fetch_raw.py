@@ -21,8 +21,8 @@ def yfinance_to_minio_raw_dag():
     ):
         
         today = datetime.today()
-        start_date = datetime(today.year - 5, 12, 12)  # Dec 12, 5 years ago
-        end_date = datetime(today.year - 3, today.month, today.day)  # today - 3 years
+        start_date = datetime(today.year -1, 12, 20) 
+        end_date = datetime(today.year , today.month, today.day)
 
         # 1) Download daily data with yfinance
         df = yf.download(
